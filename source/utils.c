@@ -81,7 +81,7 @@ u32 waitInput(bool isMenu)
 
         if(!key)
         {
-            if(i2cReadRegister(I2C_DEV_MCU, 0x10) == 1) mcuPowerOff();
+            if(i2cReadRegister(I2C_DEV_MCU, 0x10) & 1) mcuPowerOff();
             oldKey = 0;
             dPadDelay = 0;
             continue;
