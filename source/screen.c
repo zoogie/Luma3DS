@@ -87,20 +87,8 @@ void clearScreens(bool isAlternate)
 static void initScreensSequence(void)
 {
     *(vu32 *)ARM11_PARAMETERS_ADDRESS = brightness[MULTICONFIG(BRIGHTNESS)];
+    memcpy((void *)(ARM11_PARAMETERS_ADDRESS + 4), fbs, sizeof(fbs));
     invokeArm11Function(INIT_SCREENS_SEQUENCE);
-}
-
-static void setupFramebuffers(void)
-{
-    fbs[0].top_left = (u8 *)0x18300000;
-    fbs[1].top_left = (u8 *)0x18400000;
-    fbs[0].top_right = (u8 *)0x18300000;
-    fbs[1].top_right = (u8 *)0x18400000;
-    fbs[0].bottom = (u8 *)0x18346500;
-    fbs[1].bottom = (u8 *)0x18446500;
-
-    memcpy((void *)ARM11_PARAMETERS_ADDRESS, fbs, sizeof(fbs));
-    invokeArm11Function(SETUP_FRAMEBUFFERS);
 }
 
 void initScreens(void)
@@ -109,6 +97,13 @@ void initScreens(void)
 
     if(needToSetup)
     {
+        fbs[0].top_left = (u8 *)0x18300000;
+        fbs[1].top_left = (u8 *)0x18400000;
+        fbs[0].top_right = (u8 *)0x18300000;
+        fbs[1].top_right = (u8 *)0x18400000;
+        fbs[0].bottom = (u8 *)0x18346500;
+        fbs[1].bottom = (u8 *)0x18446500;
+
         if(!ARESCREENSINITIALIZED)
         {
             initScreensSequence();
@@ -118,7 +113,6 @@ void initScreens(void)
         }
         else updateBrightness(MULTICONFIG(BRIGHTNESS));
 
-        setupFramebuffers();
         needToSetup = false;
     }
 
