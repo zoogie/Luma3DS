@@ -25,23 +25,25 @@
 *   Screen deinit code by tiniVi
 */
 
-/*
-*   About cache coherency:
-*
-*   Flushing the data cache for all memory regions read from/written to by both processors is mandatory on the ARM9 processor.
-*   Thus, we make sure there'll be a cache miss on the ARM9 next time it's read.
-*   Otherwise the ARM9 won't see the changes made and things will break.
-*
-*   On the ARM11, in the environment we're in, the MMU isn't enabled and nothing is cached.
-*/
-
 #include "screen.h"
 #include "config.h"
 #include "memory.h"
 #include "i2c.h"
 #include "utils.h"
 
-struct fb fbs[2];
+struct fb fbs[2] =
+{
+    {
+        .top_left  = (u8 *)0x18300000,
+        .top_right = (u8 *)0x18300000,
+        .bottom    = (u8 *)0x18346500,
+    },
+    {
+        .top_left  = (u8 *)0x18400000,
+        .top_right = (u8 *)0x18400000,
+        .bottom    = (u8 *)0x18446500,
+    },
+};
 
 static const u32 brightness[4] = {0x5F, 0x4C, 0x39, 0x26};
 
@@ -84,37 +86,18 @@ void clearScreens(bool isAlternate)
     invokeArm11Function(CLEAR_SCREENS);
 }
 
-static void initScreensSequence(void)
-{
-    *(vu32 *)ARM11_PARAMETERS_ADDRESS = brightness[MULTICONFIG(BRIGHTNESS)];
-    memcpy((void *)(ARM11_PARAMETERS_ADDRESS + 4), fbs, sizeof(fbs));
-    invokeArm11Function(INIT_SCREENS_SEQUENCE);
-}
-
 void initScreens(void)
 {
-    static bool needToSetup = true;
-
-    if(needToSetup)
+    if(!ARESCREENSINITIALIZED)
     {
-        fbs[0].top_left = (u8 *)0x18300000;
-        fbs[1].top_left = (u8 *)0x18400000;
-        fbs[0].top_right = (u8 *)0x18300000;
-        fbs[1].top_right = (u8 *)0x18400000;
-        fbs[0].bottom = (u8 *)0x18346500;
-        fbs[1].bottom = (u8 *)0x18446500;
+        *(vu32 *)ARM11_PARAMETERS_ADDRESS = brightness[MULTICONFIG(BRIGHTNESS)];
+        memcpy((void *)(ARM11_PARAMETERS_ADDRESS + 4), fbs, sizeof(fbs));
+        invokeArm11Function(INIT_SCREENS);
 
-        if(!ARESCREENSINITIALIZED)
-        {
-            initScreensSequence();
-
-            //Turn on backlight
-            i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x2A);
-        }
-        else updateBrightness(MULTICONFIG(BRIGHTNESS));
-
-        needToSetup = false;
+        //Turn on backlight
+        i2cWriteRegister(I2C_DEV_MCU, 0x22, 0x2A);
     }
+    else updateBrightness(MULTICONFIG(BRIGHTNESS));
 
     clearScreens(false);
     clearScreens(true);

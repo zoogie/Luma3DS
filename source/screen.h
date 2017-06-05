@@ -49,7 +49,7 @@ struct fb {
 
 typedef enum
 {
-    INIT_SCREENS_SEQUENCE = 0,
+    INIT_SCREENS = 0,
     CLEAR_SCREENS,
     SWAP_FRAMEBUFFERS,
     UPDATE_BRIGHTNESS,

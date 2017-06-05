@@ -65,7 +65,6 @@ static void initScreens(u32 brightnessLevel, struct fb *fbs)
     *(vu32 *)0x1040045C = 0x00f00190;
     *(vu32 *)0x10400460 = 0x01c100d1;
     *(vu32 *)0x10400464 = 0x01920002;
-    *(vu32 *)0x10400468 = 0x18300000;
     *(vu32 *)0x10400468 = (u32)fbs[0].top_left;
     *(vu32 *)0x1040046C = (u32)fbs[1].top_left;
     *(vu32 *)0x10400470 = 0x80341;
@@ -103,7 +102,6 @@ static void initScreens(u32 brightnessLevel, struct fb *fbs)
     *(vu32 *)0x1040055C = 0x00f00140;
     *(vu32 *)0x10400560 = 0x01c100d1;
     *(vu32 *)0x10400564 = 0x01920052;
-    *(vu32 *)0x10400568 = 0x18300000 + 0x46500;
     *(vu32 *)0x10400568 = (u32)fbs[0].bottom;
     *(vu32 *)0x1040056C = (u32)fbs[1].bottom;
     *(vu32 *)0x10400570 = 0x80301;
@@ -169,7 +167,7 @@ void main(void)
         {
             case ARM11_READY:
                 continue;
-            case INIT_SCREENS_SEQUENCE:
+            case INIT_SCREENS:
                 initScreens(*(vu32 *)ARM11_PARAMETERS_ADDRESS, (struct fb *)(ARM11_PARAMETERS_ADDRESS + 4));
                 break;
             case CLEAR_SCREENS:

@@ -79,14 +79,14 @@ static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
     u32 srcModuleSize;
     const char *extModuleSizeError = "The external FIRM modules are too large.";
 
-    u32 nbModules = 0,
-        isCustomModule = false;
+    u32 nbModules = 0;
+
     struct
     {
         char name[8];
         u8 *src;
         u32 size;
-    } moduleList[6];
+    } moduleList[5];
 
     //1) Parse info concerning Nintendo's modules
     for(u8 *src = (u8 *)firm + firm->section[0].offset, *srcEnd = src + firm->section[0].size; src < srcEnd; src += srcModuleSize, nbModules++)
@@ -106,14 +106,12 @@ static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
             u32 i;
             for(i = 0; i < nbModules && memcmp(name, moduleList[i].name, 8) != 0; i++);
 
-            if(i == nbModules) isCustomModule = true;
+            if(i == nbModules) continue;
 
             memcpy(moduleList[i].name, ((Cxi *)src)->exHeader.systemControlInfo.appTitle, 8);
             moduleList[i].src = src;
             srcModuleSize = moduleList[i].size = ((Cxi *)src)->ncch.contentSize * 0x200;
         }
-
-        if(isCustomModule) nbModules++;
     }
 
     //3) Read or copy the modules
@@ -150,13 +148,6 @@ static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
             memcpy(dst, moduleList[i].src, moduleList[i].size);
             dst += moduleList[i].size;
         }
-    }
-
-    //4) Patch NATIVE_FIRM if necessary
-    if(isCustomModule)
-    {
-        if(patchK11ModuleLoading(firm->section[0].size, dst - firm->section[0].address, (u8 *)firm + firm->section[1].offset, firm->section[1].size) != 0)
-            error("Failed to inject custom sysmodule");
     }
 }
 
