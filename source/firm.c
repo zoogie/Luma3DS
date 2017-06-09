@@ -76,78 +76,56 @@ static inline bool loadFirmFromStorage(FirmwareType firmType)
 
 static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
 {
-    u32 srcModuleSize;
+    u32 maxModuleSize = 0x60000,
+        srcModuleSize,
+        dstModuleSize;
     const char *extModuleSizeError = "The external FIRM modules are too large.";
 
-    u32 nbModules = 0;
-
-    struct
+    for(u8 *src = (u8 *)firm + firm->section[0].offset, *srcEnd = src + firm->section[0].size, *dst = firm->section[0].address;
+        src < srcEnd; src += srcModuleSize, dst += dstModuleSize, maxModuleSize -= dstModuleSize)
     {
-        char name[8];
-        u8 *src;
-        u32 size;
-    } moduleList[5];
-
-    //1) Parse info concerning Nintendo's modules
-    for(u8 *src = (u8 *)firm + firm->section[0].offset, *srcEnd = src + firm->section[0].size; src < srcEnd; src += srcModuleSize, nbModules++)
-    {
-        memcpy(moduleList[nbModules].name, ((Cxi *)src)->exHeader.systemControlInfo.appTitle, 8);
-        moduleList[nbModules].src = src;
-        srcModuleSize = moduleList[nbModules].size = ((Cxi *)src)->ncch.contentSize * 0x200; 
-    }
-
-    if(firmType == NATIVE_FIRM)
-    {
-        //2) Merge that info with our own modules' 
-        for(u8 *src = (u8 *)0x1FF60000; src < (u8 *)(0x1FF60000 + LUMA_SECTION0_SIZE); src += srcModuleSize)
-        {
-            const char *name = ((Cxi *)src)->exHeader.systemControlInfo.appTitle;
-
-            u32 i;
-            for(i = 0; i < nbModules && memcmp(name, moduleList[i].name, 8) != 0; i++);
-
-            if(i == nbModules) continue;
-
-            memcpy(moduleList[i].name, ((Cxi *)src)->exHeader.systemControlInfo.appTitle, 8);
-            moduleList[i].src = src;
-            srcModuleSize = moduleList[i].size = ((Cxi *)src)->ncch.contentSize * 0x200;
-        }
-    }
-
-    //3) Read or copy the modules
-    u8 *dst = firm->section[0].address;
-    for(u32 i = 0, dstModuleSize; i < nbModules; i++) 
-    {
-        dstModuleSize = 0;
+        srcModuleSize = ((Cxi *)src)->ncch.contentSize * 0x200;
+        const char *moduleName = ((Cxi *)src)->exHeader.systemControlInfo.appTitle;
 
         if(loadFromStorage)
         {
             char fileName[24];
 
             //Read modules from files if they exist
-            sprintf(fileName, "sysmodules/%.8s.cxi", moduleList[i].name);
+            sprintf(fileName, "sysmodules/%.8s.cxi", moduleName);
 
             dstModuleSize = getFileSize(fileName);
 
             if(dstModuleSize != 0)
             {
-                if(dstModuleSize > 0x60000) error(extModuleSizeError);
+                if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
 
                 if(dstModuleSize <= sizeof(Cxi) + 0x200 ||
                    fileRead(dst, fileName, dstModuleSize) != dstModuleSize ||
                    memcmp(((Cxi *)dst)->ncch.magic, "NCCH", 4) != 0 ||
-                   memcmp(moduleList[i].name, ((Cxi *)dst)->exHeader.systemControlInfo.appTitle, sizeof(((Cxi *)dst)->exHeader.systemControlInfo.appTitle)) != 0)
+                   memcmp(moduleName, ((Cxi *)dst)->exHeader.systemControlInfo.appTitle, sizeof(((Cxi *)dst)->exHeader.systemControlInfo.appTitle)) != 0)
                     error("An external FIRM module is invalid or corrupted.");
 
-                dst += dstModuleSize;
+                continue;
             }
         }
 
-        if(!dstModuleSize)
+        u8 *module;
+
+        if(firmType == NATIVE_FIRM && memcmp(moduleName, "loader", 6) == 0)
         {
-            memcpy(dst, moduleList[i].src, moduleList[i].size);
-            dst += moduleList[i].size;
+            module = (u8 *)0x1FF60000;
+            dstModuleSize = LUMA_SECTION0_SIZE;
         }
+        else
+        {
+            module = src;
+            dstModuleSize = srcModuleSize;
+        }
+
+        if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
+
+        memcpy(dst, module, dstModuleSize);
     }
 }
 

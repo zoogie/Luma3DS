@@ -37,7 +37,7 @@ void installArm9Handlers(void)
     /* IRQHandler is at 0x08000000, but we won't handle it for some reasons
        svcHandler is at 0x08000010, but we won't handle svc either */
 
-    const u32 offsets[] = {0x08, 0x18, 0x20, 0x28};
+    static const u32 offsets[] = {0x08, 0x18, 0x20, 0x28};
 
     for(u32 i = 0; i < 4; i++)
     {
@@ -115,15 +115,13 @@ void detectAndProcessExceptionDumps(void)
     const vu8 *stackDump = (vu8 *)regs + dumpHeader->registerDumpSize + dumpHeader->codeDumpSize;
     const vu8 *additionalData = stackDump + dumpHeader->stackDumpSize;
 
-    const char *handledExceptionNames[] = {
+    static const char *handledExceptionNames[] = {
         "FIQ", "undefined instruction", "prefetch abort", "data abort"
-    };
-
-    const char *specialExceptions[] = {
+    },
+                      *specialExceptions[] = {
         "kernel panic", "svcBreak"
-    };
-
-    const char *registerNames[] = {
+    },
+                      *registerNames[] = {
         "R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12",
         "SP", "LR", "PC", "CPSR", "FPEXC"
     };
