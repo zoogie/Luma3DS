@@ -35,6 +35,8 @@
 #include "fmt.h"
 #include "../build/bundled.h"
 
+static Firm *firm = (Firm *)0x20001000;
+
 static inline bool loadFirmFromStorage(FirmwareType firmType)
 {
     const char *firmwareFiles[] = {
@@ -56,7 +58,7 @@ static inline bool loadFirmFromStorage(FirmwareType firmType)
 
     if(!firmSize) return false;
 
-    if(firmSize <= sizeof(Cxi) + 0x200) error("The FIRM in /luma is not valid.");
+    if(firmSize <= sizeof(Cxi) + 0x400) error("The FIRM in /luma is not valid.");
 
     if(memcmp(firm, "FIRM", 4) != 0)
     {
@@ -129,7 +131,7 @@ static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
     }
 }
 
-u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode)
+u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode)
 {
     //Load FIRM from CTRNAND
     u32 firmVersion = firmRead(firm, (u32)*firmType);
@@ -164,6 +166,31 @@ u32 loadFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStora
     }
 
     return firmVersion;
+}
+
+void loadHomebrewFirm(u32 pressed)
+{
+    char path[10 + 255];
+
+    bool found = !pressed ? payloadMenu(path) : findPayload(path, pressed);
+
+    if(!found) return;
+
+    u32 maxPayloadSize = (u32)((u8 *)0x27FFE000 - (u8 *)firm);
+
+    u32 payloadSize = fileRead(firm, path, maxPayloadSize);
+
+    if(payloadSize <= 0x200 || !checkFirmPayload(payloadSize)) return;
+
+    char absPath[24 + 255];
+
+    if(isSdMode) sprintf(absPath, "sdmc:/luma/%s", path);
+    else sprintf(absPath, "nand:/rw/luma/%s", path);
+
+    char *argv[2] = {absPath, (char *)fbs};
+    initScreens();
+
+    launchFirm((firm->reserved2[0] & 1) ? 2 : 1, argv);
 }
 
 u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode, bool doUnitinfoPatch, bool enableExceptionHandlers)
