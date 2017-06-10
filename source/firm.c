@@ -144,61 +144,6 @@ static inline u32 loadFirmFromStorage(FirmwareType firmType)
     return firmSize;
 }
 
-static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
-{
-    u32 maxModuleSize = 0x60000,
-        srcModuleSize,
-        dstModuleSize;
-    const char *extModuleSizeError = "The external FIRM modules are too large.";
-
-    for(u8 *src = (u8 *)firm + firm->section[0].offset, *srcEnd = src + firm->section[0].size, *dst = firm->section[0].address;
-        src < srcEnd; src += srcModuleSize, dst += dstModuleSize, maxModuleSize -= dstModuleSize)
-    {
-        srcModuleSize = ((Cxi *)src)->ncch.contentSize * 0x200;
-        const char *moduleName = ((Cxi *)src)->exHeader.systemControlInfo.appTitle;
-
-        if(loadFromStorage)
-        {
-            char fileName[24];
-
-            //Read modules from files if they exist
-            sprintf(fileName, "sysmodules/%.8s.cxi", moduleName);
-
-            dstModuleSize = getFileSize(fileName);
-
-            if(dstModuleSize != 0)
-            {
-                if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
-
-                if(dstModuleSize <= sizeof(Cxi) + 0x200 ||
-                   fileRead(dst, fileName, dstModuleSize) != dstModuleSize ||
-                   memcmp(((Cxi *)dst)->ncch.magic, "NCCH", 4) != 0 ||
-                   memcmp(moduleName, ((Cxi *)dst)->exHeader.systemControlInfo.appTitle, sizeof(((Cxi *)dst)->exHeader.systemControlInfo.appTitle)) != 0)
-                    error("An external FIRM module is invalid or corrupted.");
-
-                continue;
-            }
-        }
-
-        u8 *module;
-
-        if(firmType == NATIVE_FIRM && memcmp(moduleName, "loader", 6) == 0)
-        {
-            module = (u8 *)0x1FF60000;
-            dstModuleSize = LUMA_SECTION0_SIZE;
-        }
-        else
-        {
-            module = src;
-            dstModuleSize = srcModuleSize;
-        }
-
-        if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
-
-        memcpy(dst, module, dstModuleSize);
-    }
-}
-
 u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode)
 {
     //Load FIRM from CTRNAND
@@ -278,6 +223,61 @@ void loadHomebrewFirm(u32 pressed)
     initScreens();
 
     launchFirm((firm->reserved2[0] & 1) ? 2 : 1, argv);
+}
+
+static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
+{
+    u32 maxModuleSize = 0x60000,
+        srcModuleSize,
+        dstModuleSize;
+    const char *extModuleSizeError = "The external FIRM modules are too large.";
+
+    for(u8 *src = (u8 *)firm + firm->section[0].offset, *srcEnd = src + firm->section[0].size, *dst = firm->section[0].address;
+        src < srcEnd; src += srcModuleSize, dst += dstModuleSize, maxModuleSize -= dstModuleSize)
+    {
+        srcModuleSize = ((Cxi *)src)->ncch.contentSize * 0x200;
+        const char *moduleName = ((Cxi *)src)->exHeader.systemControlInfo.appTitle;
+
+        if(loadFromStorage)
+        {
+            char fileName[24];
+
+            //Read modules from files if they exist
+            sprintf(fileName, "sysmodules/%.8s.cxi", moduleName);
+
+            dstModuleSize = getFileSize(fileName);
+
+            if(dstModuleSize != 0)
+            {
+                if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
+
+                if(dstModuleSize <= sizeof(Cxi) + 0x200 ||
+                   fileRead(dst, fileName, dstModuleSize) != dstModuleSize ||
+                   memcmp(((Cxi *)dst)->ncch.magic, "NCCH", 4) != 0 ||
+                   memcmp(moduleName, ((Cxi *)dst)->exHeader.systemControlInfo.appTitle, sizeof(((Cxi *)dst)->exHeader.systemControlInfo.appTitle)) != 0)
+                    error("An external FIRM module is invalid or corrupted.");
+
+                continue;
+            }
+        }
+
+        u8 *module;
+
+        if(firmType == NATIVE_FIRM && memcmp(moduleName, "loader", 6) == 0)
+        {
+            module = (u8 *)0x1FF60000;
+            dstModuleSize = LUMA_SECTION0_SIZE;
+        }
+        else
+        {
+            module = src;
+            dstModuleSize = srcModuleSize;
+        }
+
+        if(dstModuleSize > maxModuleSize) error(extModuleSizeError);
+
+        memcpy(dst, module, dstModuleSize);
+    }
 }
 
 u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStorage, bool isSafeMode, bool doUnitinfoPatch, bool enableExceptionHandlers)

@@ -112,4 +112,3 @@ extern bool isFirmlaunch,
             isSdMode;
 extern u16 launchedFirmTidLow[8];
 extern u16 launchedPath[41];
-extern CfgData configData;
