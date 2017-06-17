@@ -49,7 +49,7 @@ u32 reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **free
 u32 stubSvcRestrictGpuDma(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA);
 u32 implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space, bool isSafeMode);
 u32 patchArm9ExceptionHandlersInstall(u8 *pos, u32 size);
-u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset);
+u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset, u32 firmVersion);
 u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address);
 void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA);
 u32 patchKernel9Panic(u8 *pos, u32 size);

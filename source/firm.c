@@ -155,19 +155,23 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
 
     if(!ISN3DS && *firmType == NATIVE_FIRM && !ISDEVUNIT)
     {
+        static const char *oldEmuNandError = "An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it.";
+
         if(firmVersion < 0x18)
         {
             //We can't boot < 3.x EmuNANDs
-            if(nandType != FIRMWARE_SYSNAND)
-                error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it.");
+            if(nandType != FIRMWARE_SYSNAND) error(oldEmuNandError);
 
             if(isSafeMode) error("SAFE_MODE is not supported on 1.x/2.x FIRM.");
 
             *firmType = NATIVE_FIRM1X2X;
         }
+        else if(firmVersion < 0x25 && nandType != FIRMWARE_SYSNAND)
+        {
+            if(firmVersion < 0x1D) error(oldEmuNandError);
 
-        //We can't boot a 3.x/4.x NATIVE_FIRM, load one from SD/CTRNAND
-        else if(firmVersion < 0x25) mustLoadFromStorage = true;
+            mustLoadFromStorage = true;
+        }
     }
 
     bool loadedFromStorage = false;
@@ -186,7 +190,7 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
 
     if(!loadedFromStorage)
     {
-        if(mustLoadFromStorage) error("An old unsupported FIRM has been detected.\nCopy an external FIRM to boot.");
+        if(mustLoadFromStorage) error("An old unsupported EmuNAND has been detected.\nCopy an external FIRM to boot.");
         firmSize = decryptExeFs((Cxi *)firm);
         if(!firmSize) error("Unable to decrypt the CTRNAND FIRM.");
     }
@@ -226,7 +230,7 @@ void loadHomebrewFirm(u32 pressed)
 
 static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
 {
-    u32 maxModuleSize = 0x60000,
+    u32 maxModuleSize = firmType == NATIVE_FIRM ? 0x60000 : 0x600000,
         srcModuleSize,
         dstModuleSize;
     const char *extModuleSizeError = "The external FIRM modules are too large.";
@@ -350,12 +354,19 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
 
     if(enableExceptionHandlers)
     {
-        //ARM11 exception handlers
-        u32 codeSetOffset,
-            stackAddress = getInfoForArm11ExceptionHandlers(arm11Section1, firm->section[1].size, &codeSetOffset);
-        ret += installArm11Handlers(arm11ExceptionsPage, stackAddress, codeSetOffset, arm11DAbtHandler, baseK11VA + ((u8 *)arm11DAbtHandler - arm11Section1));
-        patchSvcBreak11(arm11Section1, arm11SvcTable, baseK11VA);
-        ret += patchKernel11Panic(arm11Section1, firm->section[1].size);
+        if(firmVersion >= 0x1D)
+        {
+            //ARM11 exception handlers
+            u32 codeSetOffset,
+                stackAddress = getInfoForArm11ExceptionHandlers(arm11Section1, firm->section[1].size, &codeSetOffset, firmVersion);
+
+            if(stackAddress != 0)
+            {
+                ret += installArm11Handlers(arm11ExceptionsPage, stackAddress, codeSetOffset, arm11DAbtHandler, baseK11VA + ((u8 *)arm11DAbtHandler - arm11Section1));
+                patchSvcBreak11(arm11Section1, arm11SvcTable, baseK11VA);
+                ret += patchKernel11Panic(arm11Section1, firm->section[1].size);
+            }
+        }
 
         //ARM9 exception handlers
         ret += patchArm9ExceptionHandlersInstall(arm9Section, kernel9Size);

@@ -31,8 +31,8 @@
 #include "draw.h"
 #include "cache.h"
 #include "fmt.h"
-
-#include <stdarg.h>
+#include "strings.h"
+#include "fs.h"
 
 static void startChrono(void)
 {
@@ -120,15 +120,15 @@ void wait(u64 amount)
 
 void error(const char *fmt, ...)
 {
+    char buf[DRAW_MAX_FORMATTED_STRING_SIZE + 1];
+
+    va_list args;
+    va_start(args, fmt);
+    vsprintf(buf, fmt, args);
+    va_end(args);
+
     if(!isFirmlaunch)
     {
-        char buf[DRAW_MAX_FORMATTED_STRING_SIZE + 1];
-
-        va_list args;
-        va_start(args, fmt);
-        vsprintf(buf, fmt, args);
-        va_end(args);
-
         initScreens();
 
         drawString(true, 10, 10, COLOR_RED, "An error has occurred:");
@@ -137,6 +137,7 @@ void error(const char *fmt, ...)
 
         waitInput(false);
     }
+    else fileWrite(buf, "firmlauncherror.txt", strlen(buf));
 
     mcuPowerOff();
 }

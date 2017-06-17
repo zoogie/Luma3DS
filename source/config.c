@@ -57,8 +57,8 @@ void writeConfig(bool isConfigOptions)
 {
     /* If the configuration is different from previously, overwrite it.
        Just the no-forcing flag being set is not enough */
-    if(needConfig != CREATE_CONFIGURATION && ((isConfigOptions && (configData.config & 0xFFFFFF00) == (oldConfig & 0xFFFFFF00)) ||
-                                              (!isConfigOptions && (configData.config & 0xBF) == (oldConfig & 0xFF)))) return;
+    if(needConfig != CREATE_CONFIGURATION && ((isConfigOptions && (configData.config & 0xFFFFFF80) == (oldConfig & 0xFFFFFF80)) ||
+                                              (!isConfigOptions && (configData.config & 0x3F) == (oldConfig & 0x7F)))) return;
 
     if(needConfig == CREATE_CONFIGURATION)
     {
@@ -192,6 +192,8 @@ void configMenu(bool oldPinStatus, u32 oldPinMode)
                                           "Enable Luma3DS's ARM9/ARM11 exception\n"
                                           "handlers. Luma3DS should be ran as\n"
                                           "boot.firm.\n\n"
+                                          "ARM11 exception handlers work\n"
+                                          "from FIRM 4.0 onwards.\n\n"
                                           "Useful for debugging."
                                        };
 

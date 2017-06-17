@@ -84,15 +84,19 @@
             cmp r4, r2
             ldreqh r4, [r1, #2]
             cmpeq r4, r3
-            addeq r1, #8
             addne r1, #2
             bne loop_fs
 
-        ; r1 now contains the start address of the pattern we found
+        loop_fs2: ; locate the function start
+            ldrb r4, [r1, #1]!
+            cmp r4, #0xB5
+            bne loop_fs2
+
+        ; r1 now contains the function start plus 1 byte
         ldr r0, =0x2001 ; mov r0, #1
         ldr r2, =0x4770 ; bx lr
-        strh r0, [r1]
-        strh r2, [r1, #2]
+        strh r0, [r1, #-1]
+        strh r2, [r1, #1]
 
     out:
         pop {r0-r4} ; Restore the registers we used

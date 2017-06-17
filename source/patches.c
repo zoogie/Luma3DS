@@ -352,7 +352,7 @@ u32 patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
     return 0;
 }
 
-u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset)
+u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset, u32 firmVersion)
 {
     static const u8 pattern[] = {0x1B, 0x50, 0xA0, 0xE3}, //Get TitleID from CodeSet
                     pattern2[] = {0xE8, 0x13, 0x00, 0x02}; //Call exception dispatcher
@@ -360,7 +360,12 @@ u32 getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *codeSetOffset)
     u32 *loadCodeSet = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
     u8 *temp = memsearch(pos, pattern2, size, sizeof(pattern2));
 
-    if(loadCodeSet == NULL || temp == NULL) error("Failed to get ARM11 exception handlers data.");
+    if(loadCodeSet == NULL || temp == NULL)
+    {
+        if(firmVersion != 0xFFFFFFFF) error("Failed to get ARM11 exception handlers data.");
+
+        return 0;
+    }
 
     loadCodeSet -= 2;
     *codeSetOffset = *loadCodeSet & 0xFFF;
