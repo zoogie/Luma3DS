@@ -280,7 +280,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
         kernel9Loader((Arm9Bin *)arm9Section);
         firm->arm9Entry = (u8 *)0x801B01C;
     }
-    
+
     //Find the Process9 .code location, size and memory address
     u32 process9Size,
         process9MemAddr;
