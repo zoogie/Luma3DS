@@ -151,33 +151,20 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
 
     if(firmVersion == 0xFFFFFFFF) error("Failed to get the CTRNAND FIRM.");
 
-    bool mustLoadFromStorage = false;
-
-    if(!ISN3DS && *firmType == NATIVE_FIRM && !ISDEVUNIT)
+    if(!ISN3DS && *firmType == NATIVE_FIRM && !ISDEVUNIT && firmVersion < 0x18)
     {
-        static const char *oldEmuNandError = "An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it.";
+        //We can't boot < 3.x EmuNANDs
+        if(nandType != FIRMWARE_SYSNAND) error("An old unsupported EmuNAND has been detected.\nLuma3DS is unable to boot it.");
 
-        if(firmVersion < 0x18)
-        {
-            //We can't boot < 3.x EmuNANDs
-            if(nandType != FIRMWARE_SYSNAND) error(oldEmuNandError);
+        if(isSafeMode) error("SAFE_MODE is not supported on 1.x/2.x FIRM.");
 
-            if(isSafeMode) error("SAFE_MODE is not supported on 1.x/2.x FIRM.");
-
-            *firmType = NATIVE_FIRM1X2X;
-        }
-        else if(firmVersion < 0x25 && nandType != FIRMWARE_SYSNAND)
-        {
-            if(firmVersion < 0x1D) error(oldEmuNandError);
-
-            mustLoadFromStorage = true;
-        }
+        *firmType = NATIVE_FIRM1X2X;
     }
 
     bool loadedFromStorage = false;
     u32 firmSize;
 
-    if(loadFromStorage || mustLoadFromStorage)
+    if(loadFromStorage)
     {
         u32 result = loadFirmFromStorage(*firmType);
 
@@ -190,7 +177,6 @@ u32 loadNintendoFirm(FirmwareType *firmType, FirmwareSource nandType, bool loadF
 
     if(!loadedFromStorage)
     {
-        if(mustLoadFromStorage) error("An old unsupported EmuNAND has been detected.\nCopy an external FIRM to boot.");
         firmSize = decryptExeFs((Cxi *)firm);
         if(!firmSize) error("Unable to decrypt the CTRNAND FIRM.");
     }
@@ -315,7 +301,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
     ret += patchSignatureChecks(process9Offset, process9Size);
 
     //Apply EmuNAND patches
-    if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(arm9Section, kernel9Size, process9Offset, process9Size, firm->section[2].address);
+    if(nandType != FIRMWARE_SYSNAND) ret += patchEmuNand(arm9Section, kernel9Size, process9Offset, process9Size, firm->section[2].address, firmVersion);
 
     //Apply FIRM0/1 writes patches on SysNAND to protect A9LH
     else ret += patchFirmWrites(process9Offset, process9Size);
@@ -354,7 +340,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
 
     if(enableExceptionHandlers)
     {
-        if(firmVersion >= 0x1D)
+        if(ISN3DS || firmVersion >= 0x1D)
         {
             //ARM11 exception handlers
             u32 codeSetOffset,

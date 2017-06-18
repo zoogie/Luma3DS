@@ -110,8 +110,26 @@ static inline bool getFreeK9Space(u8 *pos, u32 size, u8 **freeK9Space)
     return true;
 }
 
-static inline u32 getSdmmc(u8 *pos, u32 size, u32 *sdmmc)
+static inline u32 getSdmmc(u8 *pos, u32 size, u32 *sdmmc, u32 firmVersion)
 {
+    if(!ISN3DS && firmVersion < 0x25)
+    {
+        switch(firmVersion)
+        {
+            case 0x18:
+                *sdmmc = 0x080D91D8;
+                break;
+            case 0x1D:
+            case 0x1F:
+                *sdmmc = 0x080D8CD0;
+                break;
+            default:
+                return 1;
+        }
+
+        return 0;
+    }
+
     //Look for struct code
     static const u8 pattern[] = {0x21, 0x20, 0x18, 0x20};
 
@@ -162,7 +180,7 @@ static inline u32 patchMpu(u8 *pos, u32 size)
     return 0;
 }
 
-u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 process9Size, u8 *kernel9Address)
+u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 process9Size, u8 *kernel9Address, u32 firmVersion)
 {
     u8 *freeK9Space;
 
@@ -182,7 +200,7 @@ u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 proce
     //Find and add the SDMMC struct
     u32 *posSdmmc = (u32 *)memsearch(freeK9Space, "SDMC", emunand_bin_size, 4);
     u32 sdmmc;
-    ret += getSdmmc(process9Offset, process9Size, &sdmmc);
+    ret += getSdmmc(process9Offset, process9Size, &sdmmc, firmVersion);
     if(!ret) *posSdmmc = sdmmc;
 
     //Add EmuNAND hooks
