@@ -216,7 +216,7 @@ void loadHomebrewFirm(u32 pressed)
 
 static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
 {
-    u32 maxModuleSize = firmType == NATIVE_FIRM ? 0x60000 : 0x600000,
+    u32 maxModuleSize = firmType == NATIVE_FIRM ? 0x80000 : 0x600000,
         srcModuleSize,
         dstModuleSize;
     const char *extModuleSizeError = "The external FIRM modules are too large.";
@@ -254,7 +254,7 @@ static inline void mergeSection0(FirmwareType firmType, bool loadFromStorage)
 
         if(firmType == NATIVE_FIRM && memcmp(moduleName, "loader", 6) == 0)
         {
-            module = (u8 *)0x1FF60000;
+            module = (u8 *)0x18000000;
             dstModuleSize = LUMA_SECTION0_SIZE;
         }
         else
