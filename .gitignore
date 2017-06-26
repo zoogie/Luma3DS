@@ -10,3 +10,4 @@ exceptions/arm11/build
 *.o
 *.d
 *.elf
+.DS_Store

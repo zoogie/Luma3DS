@@ -4,10 +4,23 @@ ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
 
+ifneq ($(strip $(shell firmtool -v 2>&1 | grep usage)),)
+$(error "Please install firmtool v1.1 or greater")
+endif
+
 include $(DEVKITARM)/base_tools
 
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+	sed := gsed
+	du := gdu
+else
+	sed := sed
+	du := du
+endif
+
 name := Luma3DS
-revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-9]*-g/-/i')
+revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | $(sed) 's/-[0-9]*-g/-/i')
 commit := $(shell git rev-parse --short=8 HEAD)
 
 dir_source := source
@@ -111,12 +124,12 @@ $(dir_build)/memory.o $(dir_build)/strings.o: CFLAGS += -O3
 $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) configuration\""
 $(dir_build)/patches.o: CFLAGS += -DREVISION=\"$(revision)\" -DCOMMIT_HASH="0x$(commit)"
 $(dir_build)/firm.o: $(dir_build)/modules.bin 
-$(dir_build)/firm.o: CFLAGS += -DLUMA_SECTION0_SIZE="$(shell du -b $(dir_build)/modules.bin | cut -f1)"
+$(dir_build)/firm.o: CFLAGS += -DLUMA_SECTION0_SIZE="$(shell $(du) -b $(dir_build)/modules.bin | cut -f1)"
 
 $(dir_build)/bundled.h: $(bundled)
 	@$(foreach f, $(bundled),\
-	echo "extern const u8" `(echo $(basename $(notdir $(f))) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> $@;\
-	echo "extern const u32" `(echo $(basename $(notdir $(f)))| sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> $@;\
+	echo "extern const u8" `(echo $(basename $(notdir $(f))) | $(sed) -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> $@;\
+	echo "extern const u32" `(echo $(basename $(notdir $(f)))| $(sed) -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> $@;\
 	)
 
 $(dir_build)/%.o: $(dir_source)/%.c $(dir_build)/bundled.h
