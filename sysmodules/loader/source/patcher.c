@@ -670,7 +670,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
 
         //Patch SMDH region check for manuals
         u32 i;
-        for(i = 4; i < size; i += 4)
+        for(i = 4; i < textSize; i += 4)
         {
             u32 *code32 = (u32 *)(code + i);
             if(code32[1] == 0xE1A0000D && (*code32 & 0xFFFFFF00) == 0x0A000000 && (code32[-1] & 0xFFFFFF00) == 0xE1110000)
@@ -680,7 +680,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
                 }
         }
 
-        if(i == size) goto error;
+        if(i == textSize) goto error;
 
         //Patch DS flashcart whitelist check
         static const u8 pattern[] = {
