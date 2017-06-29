@@ -25,7 +25,6 @@
 */
 
 #include "emunand.h"
-#include "crypto.h"
 #include "memory.h"
 #include "fatfs/sdmmc/sdmmc.h"
 #include "../build/bundled.h"
@@ -112,39 +111,8 @@ static inline bool getFreeK9Space(u8 *pos, u32 size, u8 **freeK9Space)
     return true;
 }
 
-static u32 getOldSdmmc(u8 *process9Offset, u32 *sdmmc, u32 firmVersion)
+static inline u32 getOldSdmmc(u32 *sdmmc, u32 firmVersion)
 {
-    if(firmVersion == 0xFFFFFFFF)
-    {
-        __attribute__((aligned(4))) u8 hash[0x20];
-        sha(hash, process9Offset - sizeof(Cxi) - 0x200, 0x100, SHA_256_MODE);
-
-        __attribute__((aligned(4))) static const u8 hashes[3][0x20] = {
-            {0xF1, 0xBE, 0x7F, 0xDF, 0xCE, 0x22, 0x51, 0xED, 0xBF, 0xDC, 0x9C, 0x9B, 0x52, 0x48, 0xC0, 0xE2,
-             0x66, 0x1E, 0x20, 0x33, 0x1F, 0x07, 0x45, 0x7B, 0x7A, 0x72, 0x0E, 0x37, 0x6F, 0xFC, 0xA0, 0xF7},
-            {0x45, 0xEF, 0x40, 0x30, 0x50, 0x64, 0x5C, 0x89, 0xDB, 0x88, 0xAA, 0x69, 0x10, 0xDF, 0xBA, 0xC3,
-             0xEE, 0x38, 0x1C, 0x73, 0xEC, 0x74, 0x41, 0xE1, 0x82, 0x21, 0xE4, 0x9D, 0x71, 0x51, 0x1C, 0x2C},
-            {0x33, 0x8D, 0xAF, 0xFE, 0xA6, 0xD5, 0xDF, 0x52, 0xE3, 0x5A, 0xD2, 0x96, 0xAA, 0xC0, 0x5F, 0xA6,
-             0x51, 0x8C, 0x74, 0x48, 0xCF, 0xB7, 0x9F, 0x4A, 0x1C, 0xEC, 0x86, 0xDF, 0xF6, 0xA2, 0x5A, 0x4E}
-        };
-
-        u32 i;
-        for(i = 0; i < 3; i++) if(memcmp(hash, hashes[i], 0x20) == 0) break;
-
-        switch(i)
-        {
-            case 0:
-                firmVersion = 0x18;
-                break;
-            case 1:
-                firmVersion = 0x1D;
-                break;
-            case 2:
-                firmVersion = 0x1F;
-                break;
-        }
-    }
-
     switch(firmVersion)
     {
         case 0x18:
@@ -161,14 +129,14 @@ static u32 getOldSdmmc(u8 *process9Offset, u32 *sdmmc, u32 firmVersion)
     return 0;
 }
 
-static inline u32 getSdmmc(u8 *pos, u32 size, u32 *sdmmc, u32 firmVersion)
+static inline u32 getSdmmc(u8 *pos, u32 size, u32 *sdmmc)
 {
     //Look for struct code
     static const u8 pattern[] = {0x21, 0x20, 0x18, 0x20};
 
     const u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
-    if(off == NULL) return !ISN3DS && firmVersion == 0xFFFFFFFF ? getOldSdmmc(pos, sdmmc, firmVersion) : 1;
+    if(off == NULL) return 1;
 
     *sdmmc = *(u32 *)(off + 9) + *(u32 *)(off + 0xD);
 
@@ -233,7 +201,7 @@ u32 patchEmuNand(u8 *arm9Section, u32 kernel9Size, u8 *process9Offset, u32 proce
     //Find and add the SDMMC struct
     u32 *posSdmmc = (u32 *)memsearch(freeK9Space, "SDMC", emunand_bin_size, 4);
     u32 sdmmc;
-    ret += !ISN3DS && firmVersion < 0x25 ? getOldSdmmc(process9Offset, &sdmmc, firmVersion) : getSdmmc(process9Offset, process9Size, &sdmmc, firmVersion);
+    ret += !ISN3DS && firmVersion < 0x25 ? getOldSdmmc(&sdmmc, firmVersion) : getSdmmc(process9Offset, process9Size, &sdmmc);
     if(!ret) *posSdmmc = sdmmc;
 
     //Add EmuNAND hooks
