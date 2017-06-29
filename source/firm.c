@@ -376,14 +376,11 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, bool loadFromStora
         {
             //ARM11 exception handlers
             u32 codeSetOffset,
-                stackAddress = getInfoForArm11ExceptionHandlers(arm11Section1, firm->section[1].size, &codeSetOffset, firmVersion);
+                stackAddress = getInfoForArm11ExceptionHandlers(arm11Section1, firm->section[1].size, &codeSetOffset);
 
-            if(stackAddress != 0)
-            {
-                ret += installArm11Handlers(arm11ExceptionsPage, stackAddress, codeSetOffset, arm11DAbtHandler, baseK11VA + ((u8 *)arm11DAbtHandler - arm11Section1));
-                patchSvcBreak11(arm11Section1, arm11SvcTable, baseK11VA);
-                ret += patchKernel11Panic(arm11Section1, firm->section[1].size);
-            }
+            ret += installArm11Handlers(arm11ExceptionsPage, stackAddress, codeSetOffset, arm11DAbtHandler, baseK11VA + ((u8 *)arm11DAbtHandler - arm11Section1));
+            patchSvcBreak11(arm11Section1, arm11SvcTable, baseK11VA);
+            ret += patchKernel11Panic(arm11Section1, firm->section[1].size);
         }
 
         //ARM9 exception handlers
