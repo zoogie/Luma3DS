@@ -56,7 +56,7 @@
 
     loop:
         cmp r0, r1
-        blo die ; Check if we didn't go past the bounds of the memory region
+        blo loop ; Check if we didn't go past the bounds of the memory region
         ldr r3, [r1]
         cmp r3, r2
         ldreqh r3, [r1, #4]
@@ -79,7 +79,7 @@
 
         loop_fs:
             cmp r0, r1
-            blo die
+            blo loop_fs
             ldrh r4, [r1]
             cmp r4, r2
             ldreqh r4, [r1, #2]
@@ -101,9 +101,6 @@
     out:
         pop {r0-r4} ; Restore the registers we used
         bx lr ; Jump back to whoever called us
-
-    die:
-        b die
 
 .pool
 .close
