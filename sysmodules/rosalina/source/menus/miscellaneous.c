@@ -44,6 +44,7 @@ Menu miscellaneousMenu = {
         { "Change the menu combo", METHOD, .method = &MiscellaneousMenu_ChangeMenuCombo },
         { "Start InputRedirection", METHOD, .method = &MiscellaneousMenu_InputRedirection },
         { "Sync time and date via NTP", METHOD, .method = &MiscellaneousMenu_SyncTimeDate },
+        { "Install FBI", METHOD, .method = &MiscellaneousMenu_InstallCia },
         { "Save settings", METHOD, .method = &MiscellaneousMenu_SaveSettings },
         {},
     }
@@ -424,4 +425,36 @@ void MiscellaneousMenu_SyncTimeDate(void)
     }
     while(!(input & KEY_B) && !menuShouldExit);
 
+}
+
+void MiscellaneousMenu_InstallCia(void){
+	u32 bufSize = 128 * 1024; // 128KB 
+	u8* buf = (u8 *)Draw_GetFramebufferCache();   //yeah this is a weird place to borrow memory but it works fine and doesn't take anything away from rosalina's already constrained memory resources.
+	u64 pos = 0;
+	u64 size;
+	u32 bytesRead;
+	Handle file;
+	Handle cia;
+	FS_Archive archive;
+	amInit();
+	AM_InitializeExternalTitleDatabase(false);
+
+	FSUSER_OpenArchive(&archive, ARCHIVE_SDMC , fsMakePath(PATH_EMPTY, "/"));
+	FSUSER_OpenFileDirectly(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/cias/FBI.cia"), FS_OPEN_READ, 0);
+	FSFILE_GetSize(file, &size);
+	FSFILE_SetSize(cia, size);
+	
+	AM_StartCiaInstall(MEDIATYPE_SD, &cia);
+	
+	for(pos=0; pos<size; pos+=bufSize){
+		FSFILE_Read(file, &bytesRead, pos, buf, bufSize);
+		FSFILE_Write(cia, NULL, pos, buf, bytesRead, FS_WRITE_FLUSH);
+	}                                                                  
+	AM_FinishCiaInstall(cia);                     
+	FSFILE_Close(file);
+	FSUSER_CloseArchive(archive);
+	amExit();
+	menuLeave();
+	APT_HardwareResetAsync(); //cia will still install without this, but home menu won't display the present until menu reboot. rebooting the system is easier.
+	while(1) svcSleepThread(17*1000*1000);
 }
